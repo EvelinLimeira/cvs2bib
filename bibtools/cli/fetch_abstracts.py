@@ -128,23 +128,49 @@ def fetch_abstract_doi_org(doi):
         with urllib.request.urlopen(req, timeout=15) as response:
             html = response.read().decode('utf-8', errors='ignore')
             
-            # Try common abstract patterns
-            patterns = [
+            # For Springer, get the abstract section
+            # Pattern 1: Section with aria-labelledby="Abs1" and data-title="Abstract"
+            springer_patterns = [
+                r'<section[^>]*aria-labelledby="Abs1"[^>]*data-title="Abstract"[^>]*>(.*?)</section>',
+                r'<section[^>]*data-title="Abstract"[^>]*aria-labelledby="Abs1"[^>]*>(.*?)</section>',
+                r'<div[^>]*id="Abs1-section"[^>]*>(.*?)</div>',
+                r'<section[^>]*id="Abs1"[^>]*>(.*?)</section>',
+            ]
+            
+            for pattern in springer_patterns:
+                match = re.search(pattern, html, re.IGNORECASE | re.DOTALL)
+                if match:
+                    abstract_html = match.group(1)
+                    # Remove all HTML tags and get plain text
+                    abstract = re.sub(r'<[^>]+>', ' ', abstract_html)
+                    # Clean up whitespace
+                    abstract = re.sub(r'\s+', ' ', abstract)
+                    # Clean HTML entities
+                    abstract = abstract.replace('&nbsp;', ' ')
+                    abstract = abstract.replace('&amp;', '&')
+                    abstract = abstract.replace('&lt;', '<')
+                    abstract = abstract.replace('&gt;', '>')
+                    abstract = abstract.replace('&quot;', '"')
+                    abstract = abstract.strip()
+                    # Check if substantial
+                    if len(abstract) > 100:
+                        return abstract
+            
+            # Fallback: Try meta tags (usually shorter but complete)
+            meta_patterns = [
                 r'<meta name="description" content="([^"]+)"',
                 r'<meta property="og:description" content="([^"]+)"',
                 r'<meta name="dc\.description" content="([^"]+)"',
-                r'<div class="abstract[^"]*">.*?<p[^>]*>(.*?)</p>',
-                r'<section[^>]*abstract[^>]*>.*?<p[^>]*>(.*?)</p>',
             ]
             
-            for pattern in patterns:
-                match = re.search(pattern, html, re.IGNORECASE | re.DOTALL)
+            for pattern in meta_patterns:
+                match = re.search(pattern, html, re.IGNORECASE)
                 if match:
                     abstract = match.group(1)
-                    # Clean HTML tags
-                    abstract = re.sub(r'<[^>]+>', '', abstract)
+                    # Clean HTML entities
+                    abstract = abstract.replace('&nbsp;', ' ')
+                    abstract = abstract.replace('&amp;', '&')
                     abstract = abstract.strip()
-                    # Check if it's substantial (not just keywords)
                     if len(abstract) > 100:
                         return abstract
     except Exception:
@@ -283,15 +309,28 @@ def execute_fetch(api_key: str, library_id: str, library_type: str,
         else:
             base_url = f'https://api.zotero.org/users/{library_id}'
         
-        # Build URL
-        if collection_id:
-            url = f'{base_url}/collections/{collection_id}/items?limit={limit}'
-        else:
-            url = f'{base_url}/items?limit={limit}'
+        # Fetch ALL items (paginated)
+        all_items = []
+        start = 0
+        batch_size = 100
         
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        items = response.json()
+        while len(all_items) < limit:
+            if collection_id:
+                url = f'{base_url}/collections/{collection_id}/items?start={start}&limit={batch_size}'
+            else:
+                url = f'{base_url}/items?start={start}&limit={batch_size}'
+            
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            batch = response.json()
+            
+            if not batch:
+                break
+            
+            all_items.extend(batch)
+            start += batch_size
+        
+        items = all_items[:limit]  # Respect the limit parameter
         
         # Filter items without abstracts but with DOIs
         items_to_fetch = []

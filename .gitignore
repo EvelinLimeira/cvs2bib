@@ -70,5 +70,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Debug/test output files
+springer_page.html
+abstract_section.html
+
 # Auto-generated files
 src/paper2zotero.egg-info/SOURCES.txt

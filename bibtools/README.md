@@ -91,6 +91,15 @@ python -m bibtools.cli.reclassify_zotero_items \
 
 ### Abstract Fetcher
 
+**Prerequisites:**
+Create a `.env.local` file in the project root with your API keys:
+```bash
+ZOTERO_API_KEY=your_zotero_key
+ZOTERO_LIBRARY_ID=your_library_id
+ZOTERO_LIBRARY_TYPE=group
+SPRINGER_API_KEY=your_springer_key
+```
+
 **Command Line (Dry Run):**
 ```bash
 python -m bibtools.cli.fetch_abstracts \
@@ -114,6 +123,18 @@ python -m bibtools.cli.fetch_abstracts \
   --limit 10000
 ```
 
+**Bulk Update Script:**
+Update all abstracts in a collection (uses `.env.local` for credentials):
+```bash
+python -m bibtools.cli.update_all_abstracts
+```
+
+**Check Abstract Status:**
+Check how many items have abstracts:
+```bash
+python -m bibtools.cli.check_all_abstracts
+```
+
 ### Help
 ```bash
 python -m bibtools.cli.main --help
@@ -130,6 +151,21 @@ python -m bibtools.cli.fetch_abstracts --help
 - **[Abstract Fetching Guide](docs/ABSTRACT_FETCHING_GUIDE.md)** - How to fetch missing abstracts
 - **[Technical Docs](docs/CUSTOM_COMPONENTS.md)** - Architecture and API reference
 - **[Utility Scripts](utils/scripts/README.md)** - Development and debugging tools
+
+## Configuration
+
+All scripts that interact with Zotero or external APIs read credentials from `.env.local` in the project root. This file is gitignored for security.
+
+**Example `.env.local`:**
+```bash
+# Zotero Configuration
+ZOTERO_API_KEY=your_zotero_api_key
+ZOTERO_LIBRARY_ID=your_library_id
+ZOTERO_LIBRARY_TYPE=group
+
+# Springer API Configuration
+SPRINGER_API_KEY=your_springer_api_key
+```
 
 ## What they do
 
@@ -177,7 +213,9 @@ bibtools/
 │   ├── extract_articles.py              # Article extraction CLI
 │   ├── update_zotero_dois.py            # Zotero DOI updater CLI
 │   ├── reclassify_zotero_items.py       # Zotero item reclassifier CLI
-│   └── fetch_abstracts.py               # Abstract fetcher CLI
+│   ├── fetch_abstracts.py               # Abstract fetcher CLI
+│   ├── update_all_abstracts.py          # Bulk abstract updater
+│   └── check_all_abstracts.py           # Abstract status checker
 ├── core/                                 # Business logic
 │   ├── csv_converter.py                 # CSV to BibTeX conversion
 │   ├── author_fixer.py                  # Author name fixing
@@ -191,10 +229,11 @@ bibtools/
 ├── utils/                                # Utilities
 │   ├── file_handler.py                  # File operations
 │   ├── security.py                      # Security utilities
+│   ├── config.py                        # Configuration loader (.env.local)
 │   └── scripts/                         # Development/debugging scripts
-│       ├── check_zotero_collection.py   # List Zotero collections
-│       ├── check_item_types.py          # Check item type distribution
-│       └── check_abstracts_status.py    # Check abstract availability
+│       ├── get_user_id.py               # Get Zotero user info
+│       ├── debug_springer_html.py       # Debug Springer page structure
+│       └── analyze_abstract_section.py  # Analyze abstract sections
 ├── docs/                                 # Documentation
 │   ├── QUICK_START.md                   # Quick start guide
 │   ├── USER_GUIDE.md                    # User guide
